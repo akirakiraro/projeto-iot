@@ -17,6 +17,10 @@
 
 # Funcionamento do Sistema
 
+## Codigo utilizado
+
+Utilizamos o codigo que esta no arquivo projeto_iot.txt (versão mais recente utilizada na apresentação)
+
 ## Inicialização
 
 Ao ligar o Arduino:
