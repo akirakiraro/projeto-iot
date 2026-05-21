@@ -5,7 +5,7 @@
 - 1x Arduino Uno
 - 1x Display LCD 16x2
 - 1x Servo Motor
-- 1x Sensor de temperatura TMP36
+- 1x Sensor de temperatura TMP36 (durante a apresentação utilizamos outro, pois nao tinha. "DTH11")
 - 1x Buzzer
 - 1x LED
 - 4x Botões
