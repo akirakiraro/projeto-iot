@@ -1,0 +1,251 @@
+#include <LiquidCrystal.h>
+#include <Servo.h>
+#include <DHT.h>
+#define DHTTYPE DHT11 
+
+// ---------------- LCD ----------------
+LiquidCrystal lcd(12, 11, 10, 9, 8, 7);
+
+// ---------------- SERVO ----------------
+Servo servoMotor;
+
+// ---------------- PINOS ----------------
+const int servoPin = 2;
+const int buzzerPin = A2;
+const int ledPin = A0;
+const int sensortemp = A1;
+
+// Botões
+const int botao1 = 3;
+const int botao2 = 4;
+const int botao3 = 5;
+const int botao4 = 6;
+
+// ---------------- SENHA ----------------
+String senhaCorreta = "123412";
+String senhaDigitada = "";
+int tentativasErradas = 0;
+
+// ---------------- POSIÇÕES SERVO ----------------
+const int fechado = 0;
+const int aberto = 90;
+
+// ---------------- LIMITE DE TEMPERATURA ----------------
+const int limiteTemperatura = 30;
+
+
+// ---------------- SENSOR TEMPERATURA ----------------
+DHT dht(sensortemp, DHTTYPE);
+
+void setup() {
+
+  // LCD
+  lcd.begin(16, 2);
+
+  // Servo
+  servoMotor.attach(servoPin);
+  servoMotor.write(fechado);
+
+  // LED
+  pinMode(ledPin, OUTPUT);
+  digitalWrite(ledPin, HIGH);
+
+  // Buzzer
+  pinMode(buzzerPin, OUTPUT);
+
+  // Botões com pullup
+  pinMode(botao1, INPUT_PULLUP);
+  pinMode(botao2, INPUT_PULLUP);
+  pinMode(botao3, INPUT_PULLUP);
+  pinMode(botao4, INPUT_PULLUP);
+
+
+  dht.begin();
+
+  mostrarTelaInicial();
+}
+
+void loop() {
+  verificarIncendio(); 
+
+  verificarBotao(botao1, '1');
+  verificarBotao(botao2, '2');
+  verificarBotao(botao3, '3');
+  verificarBotao(botao4, '4');
+}
+
+// ---------------- MOSTRAR LCD ----------------
+void mostrarTelaInicial() {
+
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Digite senha:");
+
+  lcd.setCursor(0, 1);
+}
+
+// ---------------- VERIFICAR BOTÃO ----------------
+void verificarBotao(int pinoBotao, char numero) {
+
+  if (digitalRead(pinoBotao) == LOW) {
+
+    tone(buzzerPin, 1500); 
+    delay(100);          
+    noTone(buzzerPin);     
+
+    senhaDigitada += numero;
+
+    lcd.print(numero);
+
+    delay(250);
+
+    // Quando atingir 6 dígitos
+    if (senhaDigitada.length() == 6) {
+
+      verificarSenha();
+    }
+
+    // Espera soltar o botão
+    while (digitalRead(pinoBotao) == LOW) {
+    }
+  }
+}
+
+// ---------------- VERIFICAR SENHA ----------------
+void verificarSenha() {
+
+  if (senhaDigitada == senhaCorreta) {
+    tentativasErradas = 0;
+    abrirCofre();
+  } else {
+    tentativasErradas++; 
+    senhaErrada();
+  }
+
+  senhaDigitada = "";
+
+  delay(500);
+  mostrarTelaInicial();
+}
+
+// ---------------- ABRIR COFRE ----------------
+void abrirCofre() {
+
+  lcd.clear();
+
+  lcd.setCursor(0, 0);
+  lcd.print("Senha Correta");
+
+  lcd.setCursor(0, 1);
+  lcd.print("Cofre Aberto");
+
+  // Desliga LED
+  digitalWrite(ledPin, LOW);
+
+  // Move servo
+  servoMotor.write(aberto);
+
+  // Som sucesso
+  tone(buzzerPin, 1000);
+  delay(200);
+
+  tone(buzzerPin, 1500);
+  delay(200);
+
+  tone(buzzerPin, 2000);
+  delay(300);
+
+  noTone(buzzerPin);
+
+
+ // fechando Cofre Automatico
+  delay(5000);
+    servoMotor.write(fechado);
+
+    // Som fechando
+  tone(buzzerPin, 2000);
+  delay(200);
+
+  tone(buzzerPin, 1500);
+  digitalWrite(ledPin, HIGH);
+  delay(200);
+
+  tone(buzzerPin, 1000);
+  delay(300);
+
+  noTone(buzzerPin);
+
+}
+
+// ---------------- SENHA ERRADA ----------------
+void senhaErrada() {
+  lcd.clear();
+
+  if (tentativasErradas >= 3) {
+    lcd.setCursor(0, 0);
+    lcd.print("Muitos erros!");
+    lcd.setCursor(0, 1);
+    lcd.print("Aguarde 10s...");
+
+    tone(buzzerPin, 200);
+    delay(1000);
+    noTone(buzzerPin);
+
+    delay(9000); 
+
+    tentativasErradas = 0; 
+    
+  } else {
+    lcd.setCursor(0, 0);
+    lcd.print("Senha Errada");
+    lcd.setCursor(0, 1);
+    lcd.print("Tentativa: ");
+    lcd.print(tentativasErradas); 
+
+    tone(buzzerPin, 300);
+    delay(700);
+    noTone(buzzerPin);
+  }
+}
+
+// ---------------- SENSOR DE TEMPERATURA ----------------
+void verificarIncendio() {
+  float temperatura = dht.readTemperature();
+  
+  if (isnan(temperatura)) {
+    return; 
+  }
+
+  if (temperatura >= limiteTemperatura) {
+
+    servoMotor.write(fechado);
+    
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Incendio ");
+    lcd.setCursor(0, 1);
+    lcd.print("detectado!");
+
+    while (temperatura >= limiteTemperatura) {
+
+      for (int i = 0; i < 7; i++) {
+        digitalWrite(ledPin, !digitalRead(ledPin)); 
+        tone(buzzerPin, 2500); 
+        delay(150);
+        noTone(buzzerPin);     
+        delay(150);
+      }
+      
+      float novaTemperatura = dht.readTemperature();
+      
+      if (!isnan(novaTemperatura)) {
+        temperatura = novaTemperatura;
+      }
+    }
+    
+    digitalWrite(ledPin, HIGH);
+    mostrarTelaInicial();
+    senhaDigitada = ""; 
+  }
+}
